@@ -572,6 +572,11 @@
       outline: none;
     }
     textarea { min-height: 140px; resize: vertical; }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(56,189,248,0.65);
+      box-shadow: 0 0 0 3px rgba(56,189,248,0.12);
+    }
     input::placeholder, textarea::placeholder { color: #8fa3bd; }
 
     .footer {
@@ -956,34 +961,35 @@
 
           <div class="contact-card" id="contactForm">
             <h3 data-i18n="contact.formTitle">Submit your request</h3>
-            <form id="quoteForm">
+            <form id="quoteForm" novalidate>
               <div class="form-grid">
                 <div class="field">
                   <label for="name" data-i18n="contact.labels.name">Name</label>
-                  <input id="name" type="text" data-placeholder="contact.placeholders.name" placeholder="Your name" />
+                  <input id="name" name="name" type="text" data-placeholder="contact.placeholders.name" placeholder="Your name" required />
                 </div>
                 <div class="field">
                   <label for="company" data-i18n="contact.labels.company">Company</label>
-                  <input id="company" type="text" data-placeholder="contact.placeholders.company" placeholder="Company name" />
+                  <input id="company" name="company" type="text" data-placeholder="contact.placeholders.company" placeholder="Company name" />
                 </div>
                 <div class="field">
                   <label for="email" data-i18n="contact.labels.email">Email</label>
-                  <input id="email" type="email" data-placeholder="contact.placeholders.email" placeholder="you@company.com" />
+                  <input id="email" name="email" type="email" data-placeholder="contact.placeholders.email" placeholder="you@company.com" required />
                 </div>
                 <div class="field">
                   <label for="phone" data-i18n="contact.labels.phone">Phone (optional)</label>
-                  <input id="phone" type="text" data-placeholder="contact.placeholders.phone" placeholder="Phone number" />
+                  <input id="phone" name="phone" type="text" data-placeholder="contact.placeholders.phone" placeholder="Phone number" />
                 </div>
                 <div class="field-full">
                   <label for="part" data-i18n="contact.labels.part">Part Number / Description</label>
-                  <input id="part" type="text" data-placeholder="contact.placeholders.part" placeholder="Example: IGBT module, breaker, relay, connector, etc." />
+                  <input id="part" name="part" type="text" data-placeholder="contact.placeholders.part" placeholder="Example: IGBT module, breaker, relay, connector, etc." required />
                 </div>
                 <div class="field-full">
                   <label for="message" data-i18n="contact.labels.message">Message</label>
-                  <textarea id="message" data-placeholder="contact.placeholders.message" placeholder="Tell us what you need, quantity, urgency, and any project details that help us understand the requirement."></textarea>
+                  <textarea id="message" name="message" data-placeholder="contact.placeholders.message" placeholder="Tell us what you need, quantity, urgency, and any project details that help us understand the requirement." required></textarea>
                 </div>
                 <div class="field-full">
-                  <button type="submit" class="btn btn-primary" data-i18n="contact.labels.submit">Submit Request</button>
+                  <button type="submit" class="btn btn-primary" id="quoteSubmitBtn" data-i18n="contact.labels.submit">Submit Request</button>
+                  <p id="formStatus" style="margin-top:12px;color:#dbe6f4;font-size:0.95rem;"></p>
                 </div>
               </div>
             </form>
@@ -1398,7 +1404,97 @@
     }, 5000);
 
     document.getElementById('year').textContent = new Date().getFullYear();
-    document.getElementById('quoteForm').addEventListener('submit', (e) => e.preventDefault());
+
+    const FORM_ENDPOINT = 'https://formsubmit.co/ajax/horizonstonepro@gmail.com';
+
+    function getFormMessages() {
+      return {
+        en: {
+          sending: 'Sending your request...',
+          success: 'Request sent successfully. We will review it and reach back out soon.',
+          error: 'There was a problem sending your request. Please email us directly at horizonstonepro@gmail.com.',
+          invalid: 'Please complete the required fields before submitting.'
+        },
+        es: {
+          sending: 'Enviando tu solicitud...',
+          success: 'Solicitud enviada correctamente. La revisaremos y te responderemos pronto.',
+          error: 'Hubo un problema al enviar tu solicitud. Escríbenos directamente a horizonstonepro@gmail.com.',
+          invalid: 'Completa los campos obligatorios antes de enviar.'
+        },
+        fr: {
+          sending: 'Envoi de votre demande...',
+          success: 'Demande envoyée avec succès. Nous l’examinerons et vous répondrons bientôt.',
+          error: 'Un problème est survenu lors de l’envoi. Écrivez-nous directement à horizonstonepro@gmail.com.',
+          invalid: 'Veuillez remplir les champs obligatoires avant l’envoi.'
+        },
+        de: {
+          sending: 'Ihre Anfrage wird gesendet...',
+          success: 'Anfrage erfolgreich gesendet. Wir prüfen sie und melden uns in Kürze.',
+          error: 'Beim Senden ist ein Problem aufgetreten. Schreiben Sie uns direkt an horizonstonepro@gmail.com.',
+          invalid: 'Bitte füllen Sie die Pflichtfelder vor dem Senden aus.'
+        },
+        zh: {
+          sending: '正在发送您的请求...',
+          success: '请求已成功发送。我们会尽快查看并回复您。',
+          error: '发送时出现问题。请直接发邮件至 horizonstonepro@gmail.com。',
+          invalid: '请先填写必填字段再提交。'
+        }
+      };
+    }
+
+    const quoteForm = document.getElementById('quoteForm');
+    const formStatus = document.getElementById('formStatus');
+    const quoteSubmitBtn = document.getElementById('quoteSubmitBtn');
+
+    quoteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const messages = getFormMessages()[currentLocale] || getFormMessages().en;
+
+      if (!quoteForm.reportValidity()) {
+        formStatus.textContent = messages.invalid;
+        return;
+      }
+
+      quoteSubmitBtn.disabled = true;
+      quoteSubmitBtn.style.opacity = '0.75';
+      formStatus.textContent = messages.sending;
+
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        company: document.getElementById('company').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        part: document.getElementById('part').value.trim(),
+        message: document.getElementById('message').value.trim(),
+        _subject: 'New quote request - Horizon Industrial Supply',
+        _captcha: 'false'
+      };
+
+      try {
+        const response = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success !== 'false') {
+          formStatus.textContent = messages.success;
+          quoteForm.reset();
+        } else {
+          formStatus.textContent = messages.error;
+        }
+      } catch (error) {
+        formStatus.textContent = messages.error;
+      } finally {
+        quoteSubmitBtn.disabled = false;
+        quoteSubmitBtn.style.opacity = '1';
+      }
+    });
 
     async function initLocale() {
       const savedLocale = localStorage.getItem('his-locale');
